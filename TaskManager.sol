@@ -40,118 +40,188 @@ Scenario:
 
 */
 
-
-contract TaskManager is owned, mortal {
-    
+contract TaskContract is owned, mortal
+{
     struct Commitment
     {
         uint availableHours;
         uint committedHours;
         uint approvedHours; //reserved to future use
-    }
-
-    struct Task {
-        //task information
-        address productOwner;
-        uint    hoursEstimated;
         
-        string  description;
-        uint    fee;
-        
-        //task allocated
-        uint   hoursAllocated;
-        mapping (address => Commitment) commitments;
-        
-        uint   commitmentsCount;
-        
-        address[] developers;
     }
     
-    mapping (uint  => Task) tasks;
-    uint numTasks;
+    //task information
+    address productOwner;
+    uint    hoursEstimated;
     
-    modifier onlyAdminstrator { if (msg.sender == owner) _; }
-    modifier onlyDeveloper( uint taskId )    { if ( isDeveloperParticipate( msg.sender, taskId ) )  _; }
-    modifier onlyProductOwner( uint taskId ) { if ( msg.sender == tasks[taskid].productOwner) _; }
+    string  description;
+    uint    fee;
     
-    function isDeveloperParticipate(address developer, uint taskId)
+    //task allocated
+    uint   hoursAllocated;
+    mapping (address => Commitment) commitments;
+    
+    uint   commitmentsCount;
+    
+    mapping( uint => address ) developers;
+    uint developersCount;
+    
+    
+    function TaskContract( address _productOwner,  uint _hoursEstimated, string _description, uint _fee)
     {
-        Task task  = tasks[taskId];
-        for (var i = 0; i < task.developers.length; i++) {
-            if ( task.developers[i] == developer ) return true;
+        productOwner  = _productOwner;
+        hoursEstimated = _hoursEstimated;
+        description   = _description;
+        fee           = _fee;
+    }
+    function isProductOwner( address user ) returns( bool result )
+    {
+        return user == productOwner;
+    }
+    
+    function isDeveloperParticipate(address developer) returns (bool result) 
+    {
+        for (uint i = 0; i < developersCount; i++) {
+            if ( developers[i] == developer ) return true;
         }
         return false;
     }
     
-    
-    //for productOwner
-    function requestTask(uint hoursEstimated, string description, uint fee) returns (uint taskId)
+    //for Developer
+    function participateInTask(uint reserveHours )
     {
-        taskId = numTasks++;
-        tasks[taskId] = Task( {productOwner: msg.sender,  hoursEstimated: hoursEstimated, description: description, fee : fee } );
+        hoursAllocated += reserveHours;
+        commitments[msg.sender] =  Commitment(reserveHours, 0, 0);
+        commitmentsCount++;
+        
+        developers[developersCount++] = msg.sender;
+    }
+    
+    function isResourcesAllocated() returns (bool isContracted)
+    {
+        return (hoursEstimated == hoursAllocated);
     }
     
     //for Developer
-    function participateInTask(uint taskId, uint reserveHours )
+    function commitHours(uint spentHours, string _description) onlyDeveloper
     {
-        //TODO: transfer money from Owner to Administrator
-
-
-        Task task  = tasks[taskId];
-        task.hoursAllocated += reserveHours;
-        task.commitments[msg.sender] =  Commitment({availableHours: reserveHours});
-        task.commitmentsCount++;
-        
-        task.developers[task.developers.length] = msg.sender;
-        
-        if   (this.isResourcesAllocated(taskId)) {
-            //notify developers, they can start
-        }
-    }
-
-    //for Administrator     (Service)  -- all resources allocated for task
-    function isResourcesAllocated(uint taskId) returns (bool isContracted)
-    {
-        Task task  = tasks[taskId];
-        if (task.hoursEstimated < task.hoursAllocated) {
-            return false;
-        }
-        return true;
-    }
-    
-    //for Developer
-    function commitHours(uint taskId, uint spentHours, string description) onlyDeveloper(taskId)
-    {
-        Task task  = tasks[taskId];
-        Commitment c = task.commitments[msg.sender];
+        var c = commitments[msg.sender];
         
         //TOOD: verify overflow
         
         c.committedHours += spentHours;
         if ( c.committedHours == c.availableHours) {
-            task.commitmentsCount--;
+            commitmentsCount--;
         }
-        if ( task.commitmentsCount == 0) {
+        if ( commitmentsCount == 0) {
             //task finished, need to approve, notify
         }
     }
+
+    function isWorkDone() returns( bool _isWorkDone)  
+    {
+        //verify Task condition
+        uint hoursActual = 0;
+        for (uint i = 0; i < developersCount; i++) {
+            var developer  = developers[i];
+            var commitment = commitments[developer];
+            
+            hoursActual += commitment.committedHours;
+        }
+        if ( hoursActual < hoursEstimated ) {
+            return false;
+        } 
+        return true;
+    }
     
     //for Product Owner
-    function approve(uint taskId) onlyProductOwner( taskid ) onlyAdminstator
+    function approve()  onlyProductOwner whenWorkDone 
     {
-        Task task  = tasks[taskId];
-        var feePerHour = task.fee / task.hoursEstimated;
-        for (var i = 0; i < task.developers.length; i++) {
-            Commitment commitment = task.commitments;
+        //pay to all
+        var feePerHour = fee / hoursEstimated;
+        for (uint i = 0; i < developersCount; i++) {
+            var developer  = developers[i];
+            var commitment = commitments[developer];
             
             var developerFee = feePerHour * commitment.availableHours;
             
             //TOOD: transfer money From Adminstrator  to Developer
         }
     }
+
+    modifier onlyDeveloper( )   { if ( isDeveloperParticipate( msg.sender ) )  _; }
+    modifier onlyProductOwner() { if (  isProductOwner( msg.sender ) ) _; }
+    modifier whenWorkDone()     { if (  isWorkDone() ) _; }
     
+}
+
+
+contract TaskManager is owned, mortal 
+{
+
+    mapping (uint  => TaskContract) tasks;
+    uint numTasks;
     
+    modifier onlyAdminstrator { if (msg.sender == owner) _; }
+    modifier onlyDeveloper( uint taskId )    { if ( isDeveloperParticipate( msg.sender, taskId ) )  _; }
+    modifier onlyProductOwner( uint taskId ) { if (  tasks[taskId].isProductOwner( msg.sender ) ) _; }
     
+    function isDeveloperParticipate(address developer, uint taskId) returns (bool result) 
+    {
+        var task  = tasks[taskId];
+        return task.isDeveloperParticipate( developer);
+    }
+
+
+    //for productOwner
+    function requestTask(uint hoursEstimated, string description, uint fee) 
+        returns (uint taskId) 
+    {
+        taskId = numTasks;
+        tasks[taskId] = new TaskContract( msg.sender,  hoursEstimated, description, fee );
+        numTasks++;
+        
+        return taskId;
+    }
     
+    //for Developer
+    function participateInTask(uint taskId, uint reserveHours )
+    {
+        //TODO: transfer money from Owner to Administrator
+        
+        var  task  = tasks[taskId];
+        task.participateInTask(reserveHours);
+
+        /*if   (isResourcesAllocated(taskId)) {
+            //notify developers, they can start
+        }*/
+    }
+
+    //for Administrator     (Service)  -- all resources allocated for task
+    function isResourcesAllocated(uint taskId) returns (bool isContracted)
+    {
+        var task  = tasks[taskId];
+        return task.isResourcesAllocated();
+    }
+
+    //for Administrator     (Service)  -- task finished
+    function isTaskDone(uint taskId) returns (bool isContracted)
+    {
+        var task  = tasks[taskId];
+        return task.isWorkDone();
+    }
+
+    //for Developer
+    function commitHours(uint taskId, uint spentHours, string _description) onlyDeveloper(taskId)
+    {
+        var task  = tasks[taskId];
+        task.commitHours( spentHours,  _description);
+    }
     
+    //for Product Owner
+    function approve(uint taskId) onlyAdminstrator onlyProductOwner( taskId ) 
+    {
+        var task  = tasks[taskId];
+        task.approve();
+    }
 }
