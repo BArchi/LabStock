@@ -30,9 +30,9 @@ contract TaskManager is owned, mortal
     uint numTasks;
     
     modifier onlyAdminstrator { if (msg.sender == owner) _; }
-    modifier onlyDeveloper( uint taskId )    { if ( isDeveloperParticipate( msg.sender, taskId ) )  _; }
-    modifier onlyProductOwner( uint taskId ) { if (  tasks[taskId].isProductOwner( msg.sender ) ) _; }
-    modifier whenTaskDone( uint taskId ) { if (  tasks[taskId].isWorkDone() ) _; }
+    modifier onlyDeveloper( uint taskId )    { if ( tasks[taskId].isDeveloperParticipate(msg.sender) )  _ ; }
+    modifier onlyProductOwner( uint taskId ) { if ( tasks[taskId].isProductOwner( msg.sender ) ) _; }
+    modifier whenTaskDone( uint taskId )     { if (  tasks[taskId].isWorkDone() ) _; }
 
     modifier whenReady(uint taskId)        { if (  tasks[taskId].getStatus() == TaskContract.TaskStatus.Ready ) _; }
     modifier whenInProgress(uint taskId)   { if (  tasks[taskId].getStatus() == TaskContract.TaskStatus.InProgress ) _; }

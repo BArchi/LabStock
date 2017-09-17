@@ -1,1 +1,13 @@
-undefined
+
+1. Open  Remix IDE:  https://remix.ethereum.org/
+2. Start locahost Server:  server.sh
+3. Connect web IDE to localhost
+
+4. Choose localhost/test/TestTaskManager
+5. Compile (Settings/compile)
+6. choose TestTaskManager -- create
+7. choose TestTaskManager -- test1
+8. verify - no errors
+
+
+

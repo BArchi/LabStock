@@ -78,7 +78,7 @@ contract TaskContract is owned, mortal
     }
     
     //for Developer
-    function participateInTask(uint reserveHours ) //whenPrepare
+    function participateInTask(uint reserveHours ) whenPrepare
     {
         hoursAllocated += reserveHours;
         if  (commitments[msg.sender].isCreated) {
@@ -119,7 +119,7 @@ contract TaskContract is owned, mortal
     
     
     //for Developer
-    function commitHours(uint spentHours, string _description) //onlyDeveloper whenInProgress
+    function commitHours(uint spentHours, string _description) whenInProgress onlyDeveloper 
     {
         var c = commitments[msg.sender];
         

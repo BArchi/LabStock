@@ -1,8 +1,8 @@
 pragma solidity ^0.4.0;
 
-import "./TaskManager.sol";
-import "./owned.sol";
-import "./mortal.sol";
+import "../contracts/owned.sol";
+import "../contracts/mortal.sol";
+import "../contracts/TaskManager.sol";
 
 
 contract TestTaskManager is owned, mortal
@@ -22,7 +22,7 @@ contract TestTaskManager is owned, mortal
         
         assert(false == mgr.isTaskDone( taskId));
         assert(TaskContract.TaskStatus.InProgress == task.getStatus());
-        
+            
         
         mgr.commitHours( taskId, 50, "some work done" );
         assert(false == mgr.isTaskDone( taskId));
